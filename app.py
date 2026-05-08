@@ -635,8 +635,6 @@ st.header("🎬 Storage Change Animation")
 
 # Simply load the pre-made MP4 file
 if mp4_path.exists():
-    st.info(f"✅ Loading pre-made animation: {mp4_path.name}")
-    
     video_left, video_center, video_right = st.columns([0.15, 0.70, 0.15])
     
     with video_center:
