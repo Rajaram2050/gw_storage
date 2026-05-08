@@ -12,7 +12,6 @@ import matplotlib.ticker as mticker
 from matplotlib.colors import LinearSegmentedColormap
 from mpl_toolkits.axes_grid1 import make_axes_locatable
 import contextily as ctx
-import imageio.v2 as imageio
 from PIL import Image
 
 # Configuration
@@ -61,7 +60,8 @@ def get_paths(aoi, aquifer, period):
     """Return paths to data files based on selections."""
     excel_file = STORAGE_DIR / f"{aoi}_{aquifer}_{period}_annual_storage_change_summary.xlsx"
     gpkg_file = EXPORT_DIR / f"{aoi}_{aquifer}_{period}_storage_polygon_data.gpkg"
-    return excel_file, gpkg_file
+    mp4_file = STORAGE_DIR / f"{aoi}_{aquifer}_{period}_storage_change_timeseries.mp4"
+    return excel_file, gpkg_file, mp4_file
 
 
 def load_annual_summary(excel_path):
@@ -441,7 +441,7 @@ aquifer = st.sidebar.selectbox("Aquifer", ["Primary"])
 period = st.sidebar.selectbox("Storage Period", ["spring", "fall"])
 
 # Load data to populate year dropdown
-excel_path, gpkg_path = get_paths(aoi, aquifer, period)
+excel_path, gpkg_path, mp4_path = get_paths(aoi, aquifer, period)
 annual_summary = load_annual_summary(excel_path)
 
 selected_year = st.sidebar.selectbox("Selected Year (for map)", sorted(annual_summary["year"].unique()))
@@ -633,93 +633,18 @@ with compare_col3:
 # ============================================================================
 st.header("🎬 Storage Change Animation")
 
-frame_dir = STORAGE_DIR / "gif_frames"
-frame_pattern = f"{aoi}_{aquifer}_{period}_*_frame.png"
-frame_paths = sorted(frame_dir.glob(frame_pattern))
-
-if frame_paths:
-    frame_records = []
-
-    for frame_path in frame_paths:
-        try:
-            year = int(frame_path.stem.split("_")[-2])
-            frame_records.append({
-                "year": year,
-                "path": frame_path
-            })
-        except Exception:
-            continue
-
-    frame_df = pd.DataFrame(frame_records)
-
-    if not frame_df.empty:
-        frame_df = frame_df.sort_values("year").reset_index(drop=True)
-
-        sorted_frame_paths = frame_df["path"].tolist()
-        start_year = int(frame_df["year"].min())
-        end_year = int(frame_df["year"].max())
-
-        mp4_path = STORAGE_DIR / f"{aoi}_{aquifer}_{period}_storage_change_timeseries.mp4"
-
-        # Optional button to force recreation
-        recreate_video = st.button("Recreate animation video")
-
-        if recreate_video and mp4_path.exists():
-            mp4_path.unlink()
-
-        if not mp4_path.exists():
-            try:
-                with st.spinner("Creating browser-compatible MP4 animation from PNG frames..."):
-
-                    # Read first image and define target size
-                    first_img = Image.open(sorted_frame_paths[0]).convert("RGB")
-                    width, height = first_img.size
-
-                    # Ensure even dimensions for browser-compatible video
-                    width = width if width % 2 == 0 else width - 1
-                    height = height if height % 2 == 0 else height - 1
-                    target_size = (width, height)
-
-                    with imageio.get_writer(
-                        str(mp4_path),
-                        format="FFMPEG",
-                        mode="I",
-                        fps=1.0,
-                        codec="libx264",
-                        quality=8,
-                        macro_block_size=1,
-                        output_params=[
-                            "-pix_fmt", "yuv420p",
-                            "-movflags", "+faststart"
-                        ]
-                    ) as writer:
-
-                        for frame_path in sorted_frame_paths:
-                            img = Image.open(frame_path).convert("RGB")
-                            img = img.resize(target_size)
-                            writer.append_data(np.asarray(img))
-
-            except Exception as e:
-                st.error(f"Could not create MP4 animation: {e}")
-
-        if mp4_path.exists():
-            video_left, video_center, video_right = st.columns([0.15, 0.70, 0.15])
-
-            with video_center:
-                st.video(str(mp4_path))
-
-                st.caption(
-                    f"Animation created from {len(sorted_frame_paths)} annual map frames "
-                    f"({start_year}–{end_year})."
-                )
-        else:
-            st.warning("MP4 animation could not be created.")
-
-    else:
-        st.info("PNG frame files were found, but no valid years could be parsed from filenames.")
-
+# Simply load the pre-made MP4 file
+if mp4_path.exists():
+    st.info(f"✅ Loading pre-made animation: {mp4_path.name}")
+    
+    video_left, video_center, video_right = st.columns([0.15, 0.70, 0.15])
+    
+    with video_center:
+        st.video(str(mp4_path))
+        st.caption("Storage change time-series animation")
 else:
-    st.info(f"No PNG animation frames found in: {frame_dir}")
+    st.warning(f"⚠️ Animation file not found: {mp4_path.name}")
+    st.info(f"Expected location: `{mp4_path}`")
 
 # ============================================================================
 # DOWNLOAD BUTTONS
