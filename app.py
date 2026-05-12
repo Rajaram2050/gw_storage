@@ -105,11 +105,11 @@ def plot_annual_cumulative_interactive(annual_df):
     """Create interactive annual/cumulative plot with visible water-year shading."""
 
     wy_colors = {
-        "W":  "#b3d9ff",
-        "AN": "#d6f5d6",
-        "BN": "#fff2b3",
-        "D":  "#ffd6a5",
-        "C":  "#ffb3b3",
+        "W":  "#018571",
+        "AN": "#80cdc1",
+        "BN": "#f5f5f5",
+        "D":  "#dfc27d",
+        "C":  "#a6611a",
     }
 
     wy_labels = {
